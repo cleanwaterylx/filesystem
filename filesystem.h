@@ -13,9 +13,9 @@ typedef struct FCB
     unsigned char attribute;
     unsigned short time;
     unsigned short date;
-    unsigned short first;
-    unsigned long length;
-    char free;
+    unsigned short first;   //文件起始盘块号
+    unsigned long length;   
+    char free;                //表示目录项是否为空
 } fcb;
 
 typedef struct FAT
@@ -26,9 +26,11 @@ typedef struct FAT
 typedef struct USEROPEN
 {
     fcb filefcb;
+    int dirno;
+    int diroff;
     char dir[80];
-    int pos; //读写位置
-    char fcbstate;
+    int file_ptr;           //读写位置
+    char fcbstate;      
     char topenfile;
 } useropen;
 
@@ -43,7 +45,8 @@ unsigned char *v_start_pos; //虚拟磁盘的起始位置
 useropen openfilelist[MAXOPENFILE];
 int curdirfd;
 char curdir[80];
-unsigned char *startp;
+unsigned char *startp;       //虚拟磁盘数据区起始位置
+unsigned char buf[SIZE];       //缓冲区
 
 int main();
 void my_startsys();

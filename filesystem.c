@@ -11,7 +11,35 @@ void my_startsys()
     FILE *file;
     if (file = fopen(FILENAME, "r") != NULL)
     {
+        fread(buf, sizeof(char), SIZE, file);          //TODO: ?
+        fclose(file);
     }
+    else
+    {
+        printf("文件系统不存在，创建文件系统\n");
+        my_format();
+        memcpy(buf, v_start_pos, SIZE);
+    }
+
+    fcb *root = (fcb *)(v_start_pos + 5 * BLOCKSIZE);
+    //TODO: 封装成函数
+    strcpy(openfilelist[0].filefcb.filename, root->filename);
+    strcpy(openfilelist[0].filefcb.exname, root->exname);
+    openfilelist[0].filefcb.attribute = root->attribute;
+    openfilelist[0].filefcb.time = root->time;
+    openfilelist[0].filefcb.date = root->date;
+    openfilelist[0].filefcb.first = root->first;
+    openfilelist[0].filefcb.length = root->length;
+    openfilelist[0].filefcb.free = root->free;
+    openfilelist[0].dirno = 5;
+    openfilelist[0].diroff = 0;
+    strcpy(openfilelist[0].dir, "\\root\\");
+    openfilelist[0].file_ptr = 0;
+    openfilelist[0].fcbstate = 0;
+    openfilelist[0].topenfile = 1;
+
+    startp = ((block0 *)v_start_pos)->startblock;
+    curdirfd = 0;
 }
 
 void my_format()
@@ -45,5 +73,23 @@ void my_format()
     time_t rawtime = time(NULL);
     struct tm *time = localtime(&rawtime);
     root->time = time->tm_hour << 11 + time->tm_min << 5 + time->tm_sec >> 1;
-    
+    root->date = time->tm_year << 9 + (time->tm_mon + 1) << 5 + time->tm_mday;  
+    root->first = 5;
+    root->free = 1;
+    root->length = 2 * sizeof(fcb);
+
+    fcb *root2 = root + 1;
+    memcpy(root2, root, sizeof(fcb));
+    strcpy(root2->filename, "..");
+    for (int i = 2; i < (int)(BLOCKSIZE / sizeof(fcb)); i++)
+    {
+        root2++;
+        strcpy(root2->filename, "");
+        root->free = 0;
+    }
+
+    //写入文件
+    FILE *file = fopen(FILENAME, "w");
+    fwrite(v_start_pos, sizeof(char), SIZE, file);  //TODO: ？
+    fclose(file);
 }
