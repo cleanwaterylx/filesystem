@@ -4,6 +4,7 @@
 #define FREE 0x0000
 #define ROOTBLOCKNUM 2
 #define MAXOPENFILE 10
+#define MAX_SIZE 10000
 #define FILENAME "filesys.txt"
 
 typedef struct FCB
@@ -13,14 +14,14 @@ typedef struct FCB
     unsigned char attribute;
     unsigned short time;
     unsigned short date;
-    unsigned short first;   //文件起始盘块号
+    unsigned short first;     //文件起始盘块号
     unsigned long length;   
     char free;                //表示目录项是否为空
 } fcb;
 
 typedef struct FAT
 {
-    unsigned short id;
+    unsigned short id;        //下一个块的块号
 } fat;
 
 typedef struct USEROPEN
@@ -31,7 +32,7 @@ typedef struct USEROPEN
     char dir[80];
     int file_ptr;           //读写位置
     char fcbstate;      
-    char topenfile;
+    char topenfile;         //打开表项是否为空
 } useropen;
 
 typedef struct BLOCK0
@@ -43,10 +44,10 @@ typedef struct BLOCK0
 
 unsigned char *v_start_pos; //虚拟磁盘的起始位置
 useropen openfilelist[MAXOPENFILE];
-int curdirfd;
+int curfd;
 char curdir[80];
 unsigned char *startp;       //虚拟磁盘数据区起始位置
-unsigned char buf[SIZE];       //缓冲区
+unsigned char buffer[SIZE];       //缓冲区
 
 int main();
 void my_startsys();
