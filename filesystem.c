@@ -88,7 +88,7 @@ void my_format()
     fwrite(v_start_pos, sizeof(char), SIZE, file); // TODO: ？
     fclose(file);
 }
-//done
+// done
 void my_ls()
 {
     if (openfilelist[curfd].filefcb.attribute == 1)
@@ -144,12 +144,46 @@ void my_cd(char *dirname)
 {
     if (openfilelist[curfd].filefcb.attribute == 1)
     {
-        printf("没有此目录\n");
+        printf("该文件是数据文件,不能使用cd\n");
         return;
     }
     else
     {
-        
+        char buf[MAX_SIZE];
+        openfilelist[curfd].file_ptr = 0;
+        do_read(curfd, openfilelist[curfd].filefcb.length, buf);
+        //寻找目录
+        int i = 0;
+        fcb *fcbPtr = (fcb *)buf;
+        for (; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++, fcbPtr++)
+        {
+            if (strcmp(fcbPtr->filename, dirname) == 0 && fcbPtr->attribute == 0)
+            {
+                break;
+            }
+        }
+        if (strcmp(fcbPtr->attribute, "di") != 0)
+        {
+            printf("不允许cd非目录文件\n");
+            return;
+        }
+        else
+        {
+            // cd .
+            if (strcmp(fcbPtr->filename, ".") == 0)
+            {
+                return;
+            }
+            //
+            else if (strcmp(fcbPtr->filename, "..") == 0)
+            {
+                if (curfd == 0)
+                    return;
+                else
+                {
+                }
+            }
+        }
     }
 }
 // done
@@ -194,6 +228,15 @@ int my_open(char *filename)
 
     curfd = fd;
     return 1;
+}
+
+void my_close(int fd)
+{
+    if (fd > MAXOPENFILE || fd < 0)
+    {
+        printf("不存在这个文件\n");
+        return;
+    }
 }
 // done
 int do_read(int fd, int len, char *text)
@@ -280,6 +323,18 @@ int GetFreeOpenfile()
         if (openfilelist[i].topenfile == 0)
         {
             openfilelist[i].topenfile = 1;
+            return i;
+        }
+    }
+    return -1;
+}
+
+int FindFatherDir(int fd)
+{
+    for (int i = 0; i < MAXOPENFILE; i++)
+    {
+        if(openfilelist[i].filefcb.first == openfilelist[fd].dirno)
+        {
             return i;
         }
     }
