@@ -24,7 +24,6 @@ void my_startsys()
     }
 
     fcb *root = (fcb *)(v_start_pos + 5 * BLOCKSIZE);
-    // TODO: 封装成函数
     CopyFcbToOpenfilelist(&openfilelist[0], root);
     openfilelist[0].dirno = 5;
     openfilelist[0].diroff = 0;
@@ -230,12 +229,27 @@ int my_open(char *filename)
     return 1;
 }
 
-void my_close(int fd)
+int my_close(int fd)
 {
     if (fd > MAXOPENFILE || fd < 0)
     {
         printf("不存在这个文件\n");
         return;
+    }
+    else
+    {
+        int fatherfd = FindFatherDir(fd);
+        if (fatherfd == -1)
+        {
+            printf("父目录不存在\n");
+            return -1;
+        }
+        //写回fcb
+        if (openfilelist[fd].fcbstate == 1)
+        {
+            char buf[MAX_SIZE];
+            // TODO my_lose
+        }
     }
 }
 // done
@@ -316,6 +330,66 @@ int my_read(int fd, int len)
     return 1;
 }
 
+int do_write(int fd, char *text, int len, char wstyle)
+{
+    int blockNum = openfilelist[fd].filefcb.first;
+    fat *fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + blockNum;
+    if (wstyle == 0)
+    {
+        //截断写
+        openfilelist[fd].file_ptr = 0;
+        openfilelist[fd].filefcb.length = 0;
+    }
+    else if (wstyle == 1)
+    {
+        //覆盖写
+        if (openfilelist[fd].filefcb.attribute == 1 && openfilelist[fd].filefcb.length != 0)
+        {
+            openfilelist[fd].file_ptr -= 1;
+        }
+    }
+    else if (wstyle == 2)
+    {
+        //追加写
+        if (openfilelist[fd].filefcb.attribute == 0)
+        {
+            openfilelist[fd].file_ptr = openfilelist[fd].filefcb.length;
+        }
+        else if (openfilelist[fd].filefcb.attribute == 1 && openfilelist[fd].filefcb.length != 0)
+        {
+            openfilelist[fd].file_ptr = openfilelist[fd].filefcb.length - 1;
+        }
+    }
+
+    int off = openfilelist[fd].file_ptr;
+
+    while (off > BLOCKSIZE)
+    {
+        blockNum = fatPtr->id;
+        if (blockNum == END)
+        {
+            blockNum = GetFreeBlock();
+            
+        }
+        else
+        {
+        }
+    }
+}
+
+unsigned short int GetFreeBlock()
+{
+    fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
+    for (int i = 0; i < (int)(SIZE / BLOCKSIZE); i++)
+    {
+        if(fat1->id == FREE)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
 int GetFreeOpenfile()
 {
     for (int i = 0; i < MAXOPENFILE; i++)
@@ -333,7 +407,7 @@ int FindFatherDir(int fd)
 {
     for (int i = 0; i < MAXOPENFILE; i++)
     {
-        if(openfilelist[i].filefcb.first == openfilelist[fd].dirno)
+        if (openfilelist[i].filefcb.first == openfilelist[fd].dirno)
         {
             return i;
         }
