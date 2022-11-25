@@ -329,7 +329,7 @@ int my_read(int fd, int len)
     printf("读取的结果是：%s\n", text);
     return 1;
 }
-
+//done
 int do_write(int fd, char *text, int len, char wstyle)
 {
     int blockNum = openfilelist[fd].filefcb.first;
@@ -362,19 +362,90 @@ int do_write(int fd, char *text, int len, char wstyle)
     }
 
     int off = openfilelist[fd].file_ptr;
-
+    //若off > BLOCKSIZE 找到那个盘块
     while (off > BLOCKSIZE)
     {
         blockNum = fatPtr->id;
         if (blockNum == END)
         {
-            blockNum = GetFreeBlock();
-            
+            DistributeBlock(&blockNum, fatPtr);
         }
-        else
+        fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + blockNum;
+        off -= BLOCKSIZE;
+    }
+
+    unsigned char *buf = (unsigned char *)malloc(BLOCKSIZE * sizeof(unsigned char));
+    if (buf == NULL)
+    {
+        printf("申请内存失败\n");
+        return -1;
+    }
+
+    unsigned char *blockPtr = (unsigned char *)(v_start_pos + BLOCKSIZE * blockNum);
+    int lenTmp = 0;
+    char *textTmp = text;
+    //写
+    while (len > lenTmp)
+    {
+        memcpy(buf, blockPtr, BLOCKSIZE); //将盘块读取到buf中
+        for (; off < BLOCKSIZE; off++)
         {
+            *(buf + off) = *textTmp;
+            textTmp++;
+            lenTmp++;
+            if (len == lenTmp)
+                break;
+        }
+        memcpy(blockPtr, buf, BLOCKSIZE); //将buf拷贝到盘块中
+        if (off == BLOCKSIZE && len != lenTmp)
+        {
+            off = 0;
+            blockNum = fatPtr->id;
+            if (blockNum == END)
+            {
+                DistributeBlock(&blockNum, fatPtr);
+                blockPtr = (unsigned char *)(v_start_pos + BLOCKSIZE * blockNum);
+            }
+            else
+            {
+                blockPtr = (unsigned char *)(v_start_pos + BLOCKSIZE * blockNum);
+                fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + blockNum;
+            }
         }
     }
+
+    openfilelist[fd].file_ptr += len;
+    if(openfilelist[fd].file_ptr > openfilelist[fd].filefcb.length)
+        openfilelist[fd].filefcb.length = openfilelist[fd].file_ptr;
+    free(buf);
+    //释放空闲的盘块, 修改fat表
+    int i = blockNum;
+    fat * fat1 = (fat *)(v_start_pos + BLOCKSIZE);
+    while(1)
+    {
+        if(fat1[i].id != END)
+        {
+            int next = fat1[i].id;
+            fat1[i].id = FREE;
+            i = next;
+        }
+        else
+            break;
+    }
+    fat1[blockNum].id = END;
+    //同步fat2
+    memcpy((fat *)(v_start_pos + BLOCKSIZE * 3), (fat *)(v_start_pos + BLOCKSIZE), BLOCKSIZE * 2);
+    return len;
+}
+
+int my_write(int fd)
+{
+    if(fd < 0 || fd >= MAXOPENFILE)
+    {
+        printf("文件不存在\n");
+        return -1;
+    }
+    int wstyle;
 }
 
 unsigned short int GetFreeBlock()
@@ -382,12 +453,29 @@ unsigned short int GetFreeBlock()
     fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
     for (int i = 0; i < (int)(SIZE / BLOCKSIZE); i++)
     {
-        if(fat1->id == FREE)
+        if (fat1->id == FREE)
         {
             return i;
         }
     }
     return -1;
+}
+
+//分配盘块
+void DistributeBlock(int *blockNum, fat *fatPtr)
+{
+    *blockNum = GetFreeBlock();
+    if (*blockNum == END)
+    {
+        printf("盘块不足\n");
+        return -1;
+    }
+    else
+    {
+        fatPtr->id = *blockNum;
+        fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + *blockNum;
+        fatPtr->id = END;
+    }
 }
 
 int GetFreeOpenfile()
