@@ -248,7 +248,7 @@ int my_close(int fd)
         if (openfilelist[fd].fcbstate == 1)
         {
             char buf[MAX_SIZE];
-            // TODO my_lose
+            // TODO my_close
         }
     }
 }
@@ -329,7 +329,7 @@ int my_read(int fd, int len)
     printf("读取的结果是：%s\n", text);
     return 1;
 }
-//done
+// done
 int do_write(int fd, char *text, int len, char wstyle)
 {
     int blockNum = openfilelist[fd].filefcb.first;
@@ -415,15 +415,15 @@ int do_write(int fd, char *text, int len, char wstyle)
     }
 
     openfilelist[fd].file_ptr += len;
-    if(openfilelist[fd].file_ptr > openfilelist[fd].filefcb.length)
+    if (openfilelist[fd].file_ptr > openfilelist[fd].filefcb.length)
         openfilelist[fd].filefcb.length = openfilelist[fd].file_ptr;
     free(buf);
     //释放空闲的盘块, 修改fat表
     int i = blockNum;
-    fat * fat1 = (fat *)(v_start_pos + BLOCKSIZE);
-    while(1)
+    fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
+    while (1)
     {
-        if(fat1[i].id != END)
+        if (fat1[i].id != END)
         {
             int next = fat1[i].id;
             fat1[i].id = FREE;
@@ -437,15 +437,28 @@ int do_write(int fd, char *text, int len, char wstyle)
     memcpy((fat *)(v_start_pos + BLOCKSIZE * 3), (fat *)(v_start_pos + BLOCKSIZE), BLOCKSIZE * 2);
     return len;
 }
-
+//down
 int my_write(int fd)
 {
-    if(fd < 0 || fd >= MAXOPENFILE)
+    if (fd < 0 || fd >= MAXOPENFILE)
     {
         printf("文件不存在\n");
         return -1;
     }
     int wstyle;
+    printf("输入: 0=截断写, 1=覆盖写, 2=追加写\n");
+    scanf("%d", &wstyle);
+    char text[MAX_SIZE] = "\0";
+    int i = 0;
+    while (getchar(text[i++]) != EOF)
+    {
+        if(i >= MAX_SIZE)
+            break;
+    }
+    text[i] = '\0';
+
+    do_write(fd, text, strlen(text) + 1, wstyle);
+    return 1;
 }
 
 unsigned short int GetFreeBlock()
