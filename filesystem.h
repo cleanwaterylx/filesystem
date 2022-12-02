@@ -27,8 +27,8 @@ typedef struct FAT
 typedef struct USEROPEN
 {
     fcb filefcb;
-    int dirno;
-    int diroff;
+    int dirno;              //打开文件的目录项在父目录文件中的盘块号
+    int diroff;             //打开文件的目录项在父目录文件的dirno盘块中的目录项序号
     char dir[80];
     int file_ptr;           //读写位置
     char fcbstate;      

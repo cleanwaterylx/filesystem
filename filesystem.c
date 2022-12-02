@@ -151,9 +151,10 @@ void my_cd(char *dirname)
         char buf[MAX_SIZE];
         openfilelist[curfd].file_ptr = 0;
         do_read(curfd, openfilelist[curfd].filefcb.length, buf);
-        //寻找目录
+        //寻找目录 fcbPtr
         int i = 0;
         fcb *fcbPtr = (fcb *)buf;
+        //TODO: 多层目录需要递归？
         for (; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++, fcbPtr++)
         {
             if (strcmp(fcbPtr->filename, dirname) == 0 && fcbPtr->attribute == 0)
@@ -173,13 +174,32 @@ void my_cd(char *dirname)
             {
                 return;
             }
-            //
+            //cd ..
             else if (strcmp(fcbPtr->filename, "..") == 0)
             {
                 if (curfd == 0)
+                    return;       //root
+                else
+                {
+                    curfd = my_close(curfd);
+                    return;
+                }
+            }
+            else
+            {
+                int fd = GetFreeOpenfile();
+                if(fd == -1)
                     return;
                 else
                 {
+                    CopyFcbToOpenfilelist(&openfilelist[fd], fcbPtr);
+                    openfilelist[fd].fcbstate = 0;
+                    openfilelist[fd].file_ptr = 0;
+                    openfilelist[fd].topenfile = 1;
+                    openfilelist[fd].dirno = openfilelist[curfd].filefcb.first;
+                    openfilelist[fd].diroff = i;
+                    char tmp = "\\";
+                    strcpy(openfilelist[fd].dir, strcat(strcat(openfilelist[curfd].dir, dirname), tmp));
                 }
             }
         }
@@ -228,7 +248,7 @@ int my_open(char *filename)
     curfd = fd;
     return 1;
 }
-
+//done
 int my_close(int fd)
 {
     if (fd > MAXOPENFILE || fd < 0)
@@ -248,8 +268,16 @@ int my_close(int fd)
         if (openfilelist[fd].fcbstate == 1)
         {
             char buf[MAX_SIZE];
-            // TODO my_close
+            do_read(fatherfd, openfilelist[fatherfd].filefcb.length, buf);
+            fcb *fcbPtr = (fcb *)(buf + sizeof(fcb) * openfilelist[fd].diroff);
+            CopyOpenfilelistToFcb(&openfilelist[fd], fcbPtr);
+            openfilelist[fatherfd].file_ptr = openfilelist[fd].diroff * sizeof(fcb);
+            do_write(fatherfd, (char *)fcbPtr, sizeof(fcb), 1);
         }
+        //清空openfilelist[fd]
+        memset(&openfilelist[fd], 0, sizeof(useropen));
+        curfd = fatherfd;
+        return fatherfd;
     }
 }
 // done
@@ -437,7 +465,7 @@ int do_write(int fd, char *text, int len, char wstyle)
     memcpy((fat *)(v_start_pos + BLOCKSIZE * 3), (fat *)(v_start_pos + BLOCKSIZE), BLOCKSIZE * 2);
     return len;
 }
-//down
+// down
 int my_write(int fd)
 {
     if (fd < 0 || fd >= MAXOPENFILE)
@@ -452,7 +480,7 @@ int my_write(int fd)
     int i = 0;
     while (getchar(text[i++]) != EOF)
     {
-        if(i >= MAX_SIZE)
+        if (i >= MAX_SIZE)
             break;
     }
     text[i] = '\0';
@@ -520,4 +548,10 @@ int FindFatherDir(int fd)
 void CopyFcbToOpenfilelist(useropen *useropenPtr, fcb *fcbPtr)
 {
     memcpy(&useropenPtr->filefcb, fcbPtr, sizeof(fcb));
+}
+
+//复制openfilelist到fcb
+void CopyOpenfilelistToFcb(useropen *useropenPtr, fcb *fcbPtr)
+{
+    memcpy(fcbPtr, &useropenPtr->filefcb, sizeof(fcb));
 }
