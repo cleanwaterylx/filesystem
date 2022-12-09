@@ -7,11 +7,11 @@
 // done
 void my_startsys()
 {
-    v_start_pos = (unsigned char)malloc(SIZE); //为文件系统分配空间
+    v_start_pos = (unsigned char *)malloc(SIZE); //为文件系统分配空间
 
     printf("读取文件filesys.txt");
     FILE *file;
-    if (file = fopen(FILENAME, "r") != NULL)
+    if ((file = fopen(FILENAME, "r")) != NULL)
     {
         fread(buffer, sizeof(char), SIZE, file); // TODO: ?
         fclose(file);
@@ -138,7 +138,7 @@ void my_ls()
         fcbPtr++;
     }
 }
-
+//done
 void my_cd(char *dirname)
 {
     if (openfilelist[curfd].filefcb.attribute == 1)
@@ -162,7 +162,7 @@ void my_cd(char *dirname)
                 break;
             }
         }
-        if (strcmp(fcbPtr->attribute, "di") != 0)
+        if (strcmp(fcbPtr->exname, "di") != 0)
         {
             printf("不允许cd非目录文件\n");
             return;
@@ -198,8 +198,9 @@ void my_cd(char *dirname)
                     openfilelist[fd].topenfile = 1;
                     openfilelist[fd].dirno = openfilelist[curfd].filefcb.first;
                     openfilelist[fd].diroff = i;
-                    char tmp = "\\";
+                    char *tmp = "\\";
                     strcpy(openfilelist[fd].dir, strcat(strcat(openfilelist[curfd].dir, dirname), tmp));
+                    curfd = fd;
                 }
             }
         }
@@ -254,7 +255,7 @@ int my_close(int fd)
     if (fd > MAXOPENFILE || fd < 0)
     {
         printf("不存在这个文件\n");
-        return;
+        return -1;
     }
     else
     {
@@ -396,7 +397,8 @@ int do_write(int fd, char *text, int len, char wstyle)
         blockNum = fatPtr->id;
         if (blockNum == END)
         {
-            DistributeBlock(&blockNum, fatPtr);
+            if(DistributeBlock(&blockNum, fatPtr) == -1)
+                return -1;
         }
         fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + blockNum;
         off -= BLOCKSIZE;
@@ -431,7 +433,8 @@ int do_write(int fd, char *text, int len, char wstyle)
             blockNum = fatPtr->id;
             if (blockNum == END)
             {
-                DistributeBlock(&blockNum, fatPtr);
+                if(DistributeBlock(&blockNum, fatPtr) == -1)
+                    return -1;
                 blockPtr = (unsigned char *)(v_start_pos + BLOCKSIZE * blockNum);
             }
             else
@@ -478,7 +481,7 @@ int my_write(int fd)
     scanf("%d", &wstyle);
     char text[MAX_SIZE] = "\0";
     int i = 0;
-    while (getchar(text[i++]) != EOF)
+    while (text[i++] = getchar() != EOF)
     {
         if (i >= MAX_SIZE)
             break;
@@ -503,7 +506,7 @@ unsigned short int GetFreeBlock()
 }
 
 //分配盘块
-void DistributeBlock(int *blockNum, fat *fatPtr)
+int DistributeBlock(int *blockNum, fat *fatPtr)
 {
     *blockNum = GetFreeBlock();
     if (*blockNum == END)
@@ -516,6 +519,7 @@ void DistributeBlock(int *blockNum, fat *fatPtr)
         fatPtr->id = *blockNum;
         fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + *blockNum;
         fatPtr->id = END;
+        return 1;
     }
 }
 

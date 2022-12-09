@@ -65,3 +65,10 @@ int do_write(int fd, char *text, int len, char wstyle);
 int my_read(int fd, int len);
 int do_read(int fd, int len, char *text);
 void my_exitsys();
+
+int FindFatherDir();
+int DistributeBlock(int *blockNum, fat *fatPtr);
+int GetFreeOpenfile();
+void CopyFcbToOpenfilelist(useropen *useropenPtr, fcb *fcbPtr);
+void CopyOpenfilelistToFcb(useropen *useropenPtr, fcb *fcbPtr);
+
