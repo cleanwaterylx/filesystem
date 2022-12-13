@@ -7,7 +7,7 @@
 // done
 void my_startsys()
 {
-    v_start_pos = (unsigned char *)malloc(SIZE); //为文件系统分配空间
+    v_start_pos = (unsigned char *)malloc(SIZE); // 为文件系统分配空间
 
     printf("读取文件filesys.txt");
     FILE *file;
@@ -38,13 +38,13 @@ void my_startsys()
 // done
 void my_format()
 {
-    //设置引导块
+    // 设置引导块
     block0 *boot = (block0 *)v_start_pos;
     strcpy(boot->information, "文件系统,外存分配方式:FAT,磁盘空间管理:结合于FAT的位示图,目录结构:单用户多级目录结构.");
     boot->root = 5;
     boot->startblock = v_start_pos + BLOCKSIZE * 5;
 
-    //设置FAT表
+    // 设置FAT表
     fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
     for (int i = 0; i < 5; i++)
     {
@@ -57,7 +57,7 @@ void my_format()
     fat *fat2 = (fat *)(v_start_pos + BLOCKSIZE * 3);
     memcpy(fat2, fat1, BLOCKSIZE);
 
-    //根目录区
+    // 根目录区
     fat1[5].id = fat2[5].id = END;
     fcb *root = (fcb *)(v_start_pos + BLOCKSIZE * 5);
     strcpy(root->filename, ".");
@@ -82,7 +82,7 @@ void my_format()
         root->free = 0;
     }
 
-    //写入文件
+    // 写入文件
     FILE *file = fopen(FILENAME, "w");
     fwrite(v_start_pos, sizeof(char), SIZE, file); // TODO: ？
     fclose(file);
@@ -96,7 +96,7 @@ void my_ls()
         return;
     }
 
-    //读取目录文件
+    // 读取目录文件
     char buf[MAX_SIZE];
     openfilelist[curfd].file_ptr = 0;
     do_read(curfd, openfilelist[curfd].filefcb.length, buf);
@@ -138,7 +138,7 @@ void my_ls()
         fcbPtr++;
     }
 }
-//done
+// done
 void my_cd(char *dirname)
 {
     if (openfilelist[curfd].filefcb.attribute == 1)
@@ -151,10 +151,10 @@ void my_cd(char *dirname)
         char buf[MAX_SIZE];
         openfilelist[curfd].file_ptr = 0;
         do_read(curfd, openfilelist[curfd].filefcb.length, buf);
-        //寻找目录 fcbPtr
+        // 寻找目录 fcbPtr
         int i = 0;
         fcb *fcbPtr = (fcb *)buf;
-        //TODO: 多层目录需要递归？
+        // TODO: 多层目录需要递归？
         for (; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++, fcbPtr++)
         {
             if (strcmp(fcbPtr->filename, dirname) == 0 && fcbPtr->attribute == 0)
@@ -174,11 +174,11 @@ void my_cd(char *dirname)
             {
                 return;
             }
-            //cd ..
+            // cd ..
             else if (strcmp(fcbPtr->filename, "..") == 0)
             {
                 if (curfd == 0)
-                    return;       //root
+                    return; // root
                 else
                 {
                     curfd = my_close(curfd);
@@ -188,7 +188,7 @@ void my_cd(char *dirname)
             else
             {
                 int fd = GetFreeOpenfile();
-                if(fd == -1)
+                if (fd == -1)
                     return;
                 else
                 {
@@ -206,17 +206,64 @@ void my_cd(char *dirname)
         }
     }
 }
+
+void my_mkdir(char *dirname)
+{
+    char *fname = strtok(dirname, ".");
+    char *exname = strtok(NULL, ".");
+    if (exname)
+    {
+        printf("不允许输入后缀名\n");
+        return;
+    }
+
+    // 读取当前目录文件
+    char text[MAX_SIZE];
+    openfilelist[curfd].file_ptr = 0;
+    int fileLen = do_read(curfd, openfilelist[curfd].filefcb.length, text);
+    fcb *fcbPtr = (fcb *)(text);
+    for (int i = 0; i < (int)(fileLen / sizeof(fcb)); i++)
+    {
+        if (strcmp(dirname, fcbPtr[i].filename) == 0 && fcbPtr[i].attribute == 0)
+        {
+            printf("该目录已经存在\n");
+            return;
+        }
+    }
+
+    int fd = GetFreeOpenfile();
+    if (fd == -1)
+    {
+        printf("打开文件表已满\n");
+        return;
+    }
+
+    unsigned short int blockNum = GetFreeBlock();
+    if (blockNum == END)
+    {
+        printf("盘块不足\n");
+        openfilelist[fd].topenfile = 0;
+        return;
+    }
+    fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
+    fat *fat2 = (fat *)(v_start_pos + BLOCKSIZE * 3);
+    fat1[blockNum].id = END;
+    fat2[blockNum].id = END;
+
+
+}
+
 // done
 int my_open(char *filename)
 {
-    //读取当前目录文件
+    // 读取当前目录文件
     char buf[MAX_SIZE];
     openfilelist[curfd].file_ptr = 0;
     do_read(curfd, openfilelist[curfd].filefcb.length, buf);
     char *fname = strtok(filename, ".");
     char *exname = strtok(NULL, ".");
 
-    //寻找文件的fcb
+    // 寻找文件的fcb
     int i;
     fcb *fcbPtr = (fcb *)buf;
     for (i = 0; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++, fcbPtr++)
@@ -249,7 +296,7 @@ int my_open(char *filename)
     curfd = fd;
     return 1;
 }
-//done
+// done
 int my_close(int fd)
 {
     if (fd > MAXOPENFILE || fd < 0)
@@ -265,7 +312,7 @@ int my_close(int fd)
             printf("父目录不存在\n");
             return -1;
         }
-        //写回fcb
+        // 写回fcb
         if (openfilelist[fd].fcbstate == 1)
         {
             char buf[MAX_SIZE];
@@ -275,7 +322,7 @@ int my_close(int fd)
             openfilelist[fatherfd].file_ptr = openfilelist[fd].diroff * sizeof(fcb);
             do_write(fatherfd, (char *)fcbPtr, sizeof(fcb), 1);
         }
-        //清空openfilelist[fd]
+        // 清空openfilelist[fd]
         memset(&openfilelist[fd], 0, sizeof(useropen));
         curfd = fatherfd;
         return fatherfd;
@@ -292,14 +339,14 @@ int do_read(int fd, int len, char *text)
         return -1;
     }
 
-    //找到要读的第一个盘块的盘块号
-    int offset = openfilelist[fd].file_ptr; //读写位置
+    // 找到要读的第一个盘块的盘块号
+    int offset = openfilelist[fd].file_ptr; // 读写位置
     int blockNum = openfilelist[fd].filefcb.first;
-    fat *fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + blockNum; //当前的fat
+    fat *fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + blockNum; // 当前的fat
     while (offset >= BLOCKSIZE)
     {
         offset -= BLOCKSIZE;
-        blockNum = fatPtr->id; //下一个盘块
+        blockNum = fatPtr->id; // 下一个盘块
         if (blockNum == END)
         {
             printf("do_read寻找的块不存在\n");
@@ -310,7 +357,7 @@ int do_read(int fd, int len, char *text)
 
     unsigned char *blockPtr = v_start_pos + BLOCKSIZE * blockNum;
     memcpy(buf, blockPtr, BLOCKSIZE);
-    char *textPtr = text; //维护text指针
+    char *textPtr = text; // 维护text指针
 
     while (len > 0)
     {
@@ -365,13 +412,13 @@ int do_write(int fd, char *text, int len, char wstyle)
     fat *fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + blockNum;
     if (wstyle == 0)
     {
-        //截断写
+        // 截断写
         openfilelist[fd].file_ptr = 0;
         openfilelist[fd].filefcb.length = 0;
     }
     else if (wstyle == 1)
     {
-        //覆盖写
+        // 覆盖写
         if (openfilelist[fd].filefcb.attribute == 1 && openfilelist[fd].filefcb.length != 0)
         {
             openfilelist[fd].file_ptr -= 1;
@@ -379,7 +426,7 @@ int do_write(int fd, char *text, int len, char wstyle)
     }
     else if (wstyle == 2)
     {
-        //追加写
+        // 追加写
         if (openfilelist[fd].filefcb.attribute == 0)
         {
             openfilelist[fd].file_ptr = openfilelist[fd].filefcb.length;
@@ -391,13 +438,13 @@ int do_write(int fd, char *text, int len, char wstyle)
     }
 
     int off = openfilelist[fd].file_ptr;
-    //若off > BLOCKSIZE 找到那个盘块
+    // 若off > BLOCKSIZE 找到那个盘块
     while (off > BLOCKSIZE)
     {
         blockNum = fatPtr->id;
         if (blockNum == END)
         {
-            if(DistributeBlock(&blockNum, fatPtr) == -1)
+            if (DistributeBlock(&blockNum, fatPtr) == -1)
                 return -1;
         }
         fatPtr = (fat *)(v_start_pos + BLOCKSIZE) + blockNum;
@@ -414,10 +461,10 @@ int do_write(int fd, char *text, int len, char wstyle)
     unsigned char *blockPtr = (unsigned char *)(v_start_pos + BLOCKSIZE * blockNum);
     int lenTmp = 0;
     char *textTmp = text;
-    //写
+    // 写
     while (len > lenTmp)
     {
-        memcpy(buf, blockPtr, BLOCKSIZE); //将盘块读取到buf中
+        memcpy(buf, blockPtr, BLOCKSIZE); // 将盘块读取到buf中
         for (; off < BLOCKSIZE; off++)
         {
             *(buf + off) = *textTmp;
@@ -426,14 +473,14 @@ int do_write(int fd, char *text, int len, char wstyle)
             if (len == lenTmp)
                 break;
         }
-        memcpy(blockPtr, buf, BLOCKSIZE); //将buf拷贝到盘块中
+        memcpy(blockPtr, buf, BLOCKSIZE); // 将buf拷贝到盘块中
         if (off == BLOCKSIZE && len != lenTmp)
         {
             off = 0;
             blockNum = fatPtr->id;
             if (blockNum == END)
             {
-                if(DistributeBlock(&blockNum, fatPtr) == -1)
+                if (DistributeBlock(&blockNum, fatPtr) == -1)
                     return -1;
                 blockPtr = (unsigned char *)(v_start_pos + BLOCKSIZE * blockNum);
             }
@@ -449,7 +496,7 @@ int do_write(int fd, char *text, int len, char wstyle)
     if (openfilelist[fd].file_ptr > openfilelist[fd].filefcb.length)
         openfilelist[fd].filefcb.length = openfilelist[fd].file_ptr;
     free(buf);
-    //释放空闲的盘块, 修改fat表
+    // 释放空闲的盘块, 修改fat表
     int i = blockNum;
     fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
     while (1)
@@ -464,7 +511,7 @@ int do_write(int fd, char *text, int len, char wstyle)
             break;
     }
     fat1[blockNum].id = END;
-    //同步fat2
+    // 同步fat2
     memcpy((fat *)(v_start_pos + BLOCKSIZE * 3), (fat *)(v_start_pos + BLOCKSIZE), BLOCKSIZE * 2);
     return len;
 }
@@ -505,7 +552,7 @@ unsigned short int GetFreeBlock()
     return -1;
 }
 
-//分配盘块
+// 分配盘块
 int DistributeBlock(int *blockNum, fat *fatPtr)
 {
     *blockNum = GetFreeBlock();
@@ -548,13 +595,13 @@ int FindFatherDir(int fd)
     return -1;
 }
 
-//复制fcb到openfilelist
+// 复制fcb到openfilelist
 void CopyFcbToOpenfilelist(useropen *useropenPtr, fcb *fcbPtr)
 {
     memcpy(&useropenPtr->filefcb, fcbPtr, sizeof(fcb));
 }
 
-//复制openfilelist到fcb
+// 复制openfilelist到fcb
 void CopyOpenfilelistToFcb(useropen *useropenPtr, fcb *fcbPtr)
 {
     memcpy(fcbPtr, &useropenPtr->filefcb, sizeof(fcb));

@@ -66,6 +66,7 @@ int my_read(int fd, int len);
 int do_read(int fd, int len, char *text);
 void my_exitsys();
 
+unsigned short int GetFreeBlock();
 int FindFatherDir();
 int DistributeBlock(int *blockNum, fat *fatPtr);
 int GetFreeOpenfile();
