@@ -11,7 +11,7 @@ typedef struct FCB
 {
     char filename[8];   
     char exname[3];
-    unsigned char attribute;
+    unsigned char attribute;   //1:data, 0:dir
     unsigned short time;
     unsigned short date;
     unsigned short first;     //文件起始盘块号
@@ -67,7 +67,7 @@ int do_read(int fd, int len, char *text);
 void my_exitsys();
 
 unsigned short int GetFreeBlock();
-int FindFatherDir();
+int FindFatherDir(int fd);
 int DistributeBlock(int *blockNum, fat *fatPtr);
 int GetFreeOpenfile();
 void CopyFcbToOpenfilelist(useropen *useropenPtr, fcb *fcbPtr);

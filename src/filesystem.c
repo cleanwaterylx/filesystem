@@ -70,7 +70,7 @@ void my_format()
     root->date = time->tm_year << 9 + (time->tm_mon + 1) << 5 + time->tm_mday;
     root->first = 5;
     root->free = 1;
-    root->length = 2 * sizeof(fcb);
+    root->length = 2 * sizeof(fcb); // TODO: ?
 
     fcb *root2 = root + 1;
     memcpy(root2, root, sizeof(fcb));
@@ -206,7 +206,7 @@ void my_cd(char *dirname)
         }
     }
 }
-
+//done
 void my_mkdir(char *dirname)
 {
     char *fname = strtok(dirname, ".");
@@ -250,7 +250,61 @@ void my_mkdir(char *dirname)
     fat1[blockNum].id = END;
     fat2[blockNum].id = END;
 
+    // 找到未分配的目录项
+    int i = 0;
+    for (; i < (int)(fileLen / sizeof(fcb)); i++)
+    {
+        if (fcbPtr[i].free == 0)
+            break;
+    }
+    openfilelist[curfd].file_ptr = i * sizeof(fcb);
+    openfilelist[curfd].fcbstate = 1;
 
+    fcb *fcbtmp = (fcb *)malloc(sizeof(fcb));
+    fcbtmp->attribute = 0;
+    time_t rawtime = time(NULL);
+    struct tm *time = localtime(&rawtime);
+    fcbtmp->time = time->tm_hour << 11 + time->tm_min << 5 + time->tm_sec >> 1;
+    fcbtmp->date = time->tm_year << 9 + (time->tm_mon + 1) << 5 + time->tm_mday;
+    strcpy(fcbtmp->filename, dirname);
+    strcpy(fcbtmp->exname, "di");
+    fcbtmp->first = blockNum;
+    fcbtmp->length = 2 * sizeof(fcb); // TODO: ?
+    fcbtmp->free = 1;
+    do_write(curfd, (char *)fcbtmp, sizeof(fcb), 1);
+
+    CopyFcbToOpenfilelist(&openfilelist[fd], fcbtmp);
+    openfilelist[fd].dirno = openfilelist[curfd].filefcb.first;
+    openfilelist[fd].diroff = i;
+    char *tmp = "\\";
+    strcpy(openfilelist[fd].dir, strcat(strcat(openfilelist[curfd].dir, dirname), tmp));
+    openfilelist[fd].file_ptr = 0;
+    openfilelist[fd].fcbstate = 0;
+    openfilelist[fd].topenfile = 1;
+
+    // 添加.和..
+    strcpy(fcbtmp->filename, ".");
+    do_write(fd, (char *)fcbtmp, sizeof(fcb), 1);
+    strcpy(fcbtmp->filename, "..");
+    fcbtmp->first = openfilelist[curfd].filefcb.first;
+    fcbtmp->length = openfilelist[curfd].filefcb.length;
+    fcbtmp->date = openfilelist[curfd].filefcb.date;
+    fcbtmp->time = openfilelist[curfd].filefcb.time;
+    do_write(fd, (char *)fcbtmp, sizeof(fcb), 1);
+
+    my_close(fd);
+    // 更新currfd目录文件的fcb
+    fcbPtr->length = openfilelist[curfd].filefcb.length;
+    openfilelist[curfd].file_ptr = 0;
+    do_write(curfd, (char *)fcbPtr, sizeof(fcb), 1);
+    openfilelist[curfd].fcbstate = 1;
+    free(fcbtmp);
+}
+
+void my_rmdir(char *dirname)
+{
+
+    
 }
 
 // done
@@ -552,6 +606,7 @@ unsigned short int GetFreeBlock()
     return -1;
 }
 
+
 // 分配盘块
 int DistributeBlock(int *blockNum, fat *fatPtr)
 {
@@ -570,6 +625,7 @@ int DistributeBlock(int *blockNum, fat *fatPtr)
     }
 }
 
+//得到空闲的打开文件表
 int GetFreeOpenfile()
 {
     for (int i = 0; i < MAXOPENFILE; i++)
@@ -583,6 +639,7 @@ int GetFreeOpenfile()
     return -1;
 }
 
+//得到父目录
 int FindFatherDir(int fd)
 {
     for (int i = 0; i < MAXOPENFILE; i++)
