@@ -13,8 +13,9 @@ void my_startsys()
     FILE *file;
     if ((file = fopen(FILENAME, "r")) != NULL)
     {
-        fread(buffer, sizeof(char), SIZE, file); // TODO: ?
+        fread(buffer, SIZE, 1, file); // TODO: ?
         fclose(file);
+        memcpy(v_start_pos, buffer, SIZE);
     }
     else
     {
@@ -70,7 +71,7 @@ void my_format()
     root->date = time->tm_year << 9 + (time->tm_mon + 1) << 5 + time->tm_mday;
     root->first = 5;
     root->free = 1;
-    root->length = 2 * sizeof(fcb); // TODO: ?
+    root->length = 2 * sizeof(fcb);
 
     fcb *root2 = root + 1;
     memcpy(root2, root, sizeof(fcb));
@@ -84,7 +85,7 @@ void my_format()
 
     // 写入文件
     FILE *file = fopen(FILENAME, "w");
-    fwrite(v_start_pos, sizeof(char), SIZE, file); // TODO: ？
+    fwrite(v_start_pos, SIZE, 1, file); // TODO: ？
     fclose(file);
 }
 // done
@@ -105,7 +106,7 @@ void my_ls()
     printf("name\t size\t type\t\t date\t\t time\n");
     for (int i = 0; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++)
     {
-        if (fcbPtr->free == 1) // TODO:?
+        if (fcbPtr->free == 1) 
         {
             if (fcbPtr->attribute == 0)
             {
@@ -137,6 +138,152 @@ void my_ls()
         }
         fcbPtr++;
     }
+}
+// done
+int my_create(char *filename)
+{
+    char *fname = strtok(filename, ".");
+    char *exname = strtok(NULL, ".");
+    if (strcmp(fname, "") == 0)
+    {
+        printf("请输入文件名\n");
+        return -1;
+    }
+    if (!exname)
+    {
+        printf("请输入后缀名\n");
+        return -1;
+    }
+    if (openfilelist[curfd].filefcb.attribute == 1)
+    {
+        printf("数据文件不允许create\n");
+        return -1;
+    }
+
+    // 读取目录文件
+    openfilelist[curfd].file_ptr = 0;
+    char buf[MAX_SIZE];
+    do_read(curfd, openfilelist[curfd].filefcb.length, buf);
+    int i;
+    fcb *fcbPtr = (fcb *)buf;
+    for (; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++)
+    {
+        if (strcmp(fcbPtr[i].filename, fname) == 0 && strcmp(fcbPtr[i].exname, exname))
+        {
+            printf("已有同名文件\n");
+            return -1;
+        }
+    }
+
+    // 寻找空的fcb
+    for (i = 0; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++)
+    {
+        if (fcbPtr[i].free == 0)
+            break;
+    }
+    openfilelist[curfd].file_ptr = i * sizeof(fcb);
+    openfilelist[curfd].fcbstate = 1;
+
+    int blockNum = GetFreeBlock();
+    if (blockNum == END)
+    {
+        return -1;
+    }
+    fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
+    fat *fat2 = (fat *)(v_start_pos + BLOCKSIZE * 3);
+    fat1[blockNum].id = END;
+    fat2[blockNum].id = END;
+
+    fcb *fcbtmp = (fcb *)malloc(sizeof(fcb));
+    fcbtmp->attribute = 1;
+    time_t rawtime = time(NULL);
+    struct tm *time = localtime(&rawtime);
+    fcbtmp->time = time->tm_hour << 11 + time->tm_min << 5 + time->tm_sec >> 1;
+    fcbtmp->date = time->tm_year << 9 + (time->tm_mon + 1) << 5 + time->tm_mday;
+    strcpy(fcbtmp->filename, fname);
+    strcpy(fcbtmp->exname, exname);
+    fcbtmp->first = blockNum;
+    fcbtmp->length = 0;
+    fcbtmp->free = 1;
+    do_write(curfd, (char *)fcbtmp, sizeof(fcb), 1);
+    // 更新当前目录的fcb
+    fcbPtr = (fcb *)buf;
+    fcbPtr->length = openfilelist[curfd].filefcb.length;
+    openfilelist[curfd].file_ptr = 0;
+    do_write(curfd, (char *)fcbPtr, sizeof(fcb), 1);
+
+    return 0;
+}
+// done
+void my_rm(char *filename)
+{
+    char *fname = strtok(filename, ".");
+    char *exname = strtok(NULL, ".");
+    if (!exname)
+    {
+        printf("请输入后缀名\n");
+        return;
+    }
+    if (strcmp(exname, "di") == 0)
+    {
+        printf("不能删除目录文件\n");
+        return;
+    }
+
+    // 读取目录文件
+    char buf[MAX_SIZE];
+    openfilelist[curfd].file_ptr = 0;
+    do_read(curfd, openfilelist[curfd].filefcb.length, buf);
+    int i;
+    fcb *fcbPtr = (fcb *)buf;
+    for (; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++)
+    {
+        if (strcmp(fcbPtr->filename, fname) == 0 && strcmp(fcbPtr->exname, exname) == 0)
+        {
+            break;
+        }
+    }
+    if (i == (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)))
+    {
+        printf("没有这个文件\n");
+        return;
+    }
+
+    // 清空fat
+    int blockNum = fcbPtr->first;
+    fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
+    fat *fat2 = (fat *)(v_start_pos + BLOCKSIZE * 3);
+    int next = 0;
+    while (1)
+    {
+        next = fat1[blockNum].id;
+        fat1[blockNum].id = FREE;
+        if (next != END)
+        {
+            blockNum = next;
+        }
+        else
+            break;
+    }
+    memcpy(fat2, fat1, sizeof(fat));
+
+    // 清空fcb
+    fcbPtr->free = 0;
+    fcbPtr->time = 0;
+    fcbPtr->date = 0;
+    fcbPtr->exname[0] = '\0';
+    fcbPtr->filename[0] = '\0';
+    fcbPtr->first = 0;
+    fcbPtr->length = 0;
+    openfilelist[curfd].file_ptr = i * sizeof(fcb);
+    do_write(curfd, (char *)fcbPtr, sizeof(fcb), 1);
+    openfilelist[curfd].filefcb.length -= sizeof(fcb);
+    // 更新当前目录的fcb
+    fcbPtr = (fcb *)buf;
+    fcbPtr->length = openfilelist[curfd].filefcb.length;
+    openfilelist[curfd].file_ptr = 0;
+    do_write(curfd, (char *)fcbPtr, sizeof(fcb), 1);
+    openfilelist[curfd].fcbstate = 1;
 }
 // done
 void my_cd(char *dirname)
@@ -206,7 +353,7 @@ void my_cd(char *dirname)
         }
     }
 }
-//done
+// done
 void my_mkdir(char *dirname)
 {
     char *fname = strtok(dirname, ".");
@@ -269,7 +416,7 @@ void my_mkdir(char *dirname)
     strcpy(fcbtmp->filename, dirname);
     strcpy(fcbtmp->exname, "di");
     fcbtmp->first = blockNum;
-    fcbtmp->length = 2 * sizeof(fcb); // TODO: ?
+    fcbtmp->length = 2 * sizeof(fcb); // . & .. 的fcb
     fcbtmp->free = 1;
     do_write(curfd, (char *)fcbtmp, sizeof(fcb), 1);
 
@@ -300,13 +447,85 @@ void my_mkdir(char *dirname)
     openfilelist[curfd].fcbstate = 1;
     free(fcbtmp);
 }
-
+//done
 void my_rmdir(char *dirname)
 {
+    char *fname = strtok(dirname, ".");
+    char *exname = strtok(NULL, ".");
+    if (strcmp(dirname, ".") == 0 || strcmp(dirname, "..") == 0)
+    {
+        printf("无法删除\n");
+        return;
+    }
+    if (exname)
+    {
+        printf("不需要输入后缀名\n");
+        return;
+    }
 
-    
+    // 读取curfd
+    char buf[MAX_SIZE];
+    openfilelist[curfd].file_ptr = 0;
+    do_read(curfd, openfilelist[curfd].filefcb.length, buf);
+    int i;
+    fcb *fcbPtr = (fcb *)buf;
+    for (; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++)
+    {
+        if (strcmp(fcbPtr->filename, fname) == 0 && strcmp(fcbPtr->exname, exname) == 0)
+        {
+            break;
+        }
+    }
+    if (i == (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)))
+    {
+        printf("没有这个文件\n");
+        return;
+    }
+
+    // TODO 删除目录下的文件及递归删除
+
+    if (fcbPtr->length > 2 * sizeof(fcb))
+    {
+        printf("请先清空这个目录下的所有文件,再删除目录文件\n");
+        return;
+    }
+    //清空fat
+    int blockNum = fcbPtr->first;
+    fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
+    fat *fat2 = (fat *)(v_start_pos + BLOCKSIZE * 3);
+    int next = 0;
+    while (1)
+    {
+        next = fat1[blockNum].id;
+        fat1[blockNum].id = END;
+        if (next != END)
+        {
+            blockNum = next;
+        }
+        else
+            break;
+    }
+    memcpy(fat2, fat1, sizeof(fat));
+
+    // 清空fcb
+    fcbPtr->free = 0;
+    fcbPtr->time = 0;
+    fcbPtr->date = 0;
+    fcbPtr->exname[0] = '\0';
+    fcbPtr->filename[0] = '\0';
+    fcbPtr->first = 0;
+    fcbPtr->length = 0;
+    openfilelist[curfd].file_ptr = i * sizeof(fcb);
+    do_write(curfd, (char *)fcbPtr, sizeof(fcb), 1);
+    openfilelist[curfd].filefcb.length -= sizeof(fcb);
+    // 更新当前目录的fcb
+    fcbPtr = (fcb *)buf;
+    fcbPtr->length = openfilelist[curfd].filefcb.length;
+    openfilelist[curfd].file_ptr = 0;
+    do_write(curfd, (char *)fcbPtr, sizeof(fcb), 1);
+    openfilelist[curfd].fcbstate = 1;
+
 }
-
 // done
 int my_open(char *filename)
 {
@@ -445,6 +664,7 @@ int do_read(int fd, int len, char *text)
     free(buf);
     return lenTmp - len;
 }
+
 // done
 int my_read(int fd, int len)
 {
@@ -593,6 +813,18 @@ int my_write(int fd)
     return 1;
 }
 
+void my_exitsys()
+{
+    while(curfd)
+    {
+        my_close(curfd);
+    }
+    FILE *fp = fopen(FILENAME, "w");
+    fwrite(v_start_pos, SIZE, 1, fp);
+    fclose(fp);
+    free(v_start_pos);
+}
+
 unsigned short int GetFreeBlock()
 {
     fat *fat1 = (fat *)(v_start_pos + BLOCKSIZE);
@@ -605,7 +837,6 @@ unsigned short int GetFreeBlock()
     }
     return -1;
 }
-
 
 // 分配盘块
 int DistributeBlock(int *blockNum, fat *fatPtr)
@@ -625,7 +856,7 @@ int DistributeBlock(int *blockNum, fat *fatPtr)
     }
 }
 
-//得到空闲的打开文件表
+// 得到空闲的打开文件表
 int GetFreeOpenfile()
 {
     for (int i = 0; i < MAXOPENFILE; i++)
@@ -639,7 +870,7 @@ int GetFreeOpenfile()
     return -1;
 }
 
-//得到父目录
+// 得到父目录
 int FindFatherDir(int fd)
 {
     for (int i = 0; i < MAXOPENFILE; i++)

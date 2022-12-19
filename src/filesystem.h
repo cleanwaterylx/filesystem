@@ -50,6 +50,8 @@ unsigned char *startp;       //虚拟磁盘数据区起始位置
 unsigned char buffer[SIZE];       //缓冲区
 
 int main();
+void error(char * command);
+void show_help();
 void my_startsys();
 void my_format();
 void my_cd(char *dirname);
