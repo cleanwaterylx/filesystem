@@ -9,11 +9,11 @@ int main()
     int indexOfCmd, i;
     int length = 0;
 
-    printf("\n\n************************ æ–‡ä»¶ç³»ç»Ÿ **************************************************\n");
+    printf("\n\n************************ ÎÄ¼şÏµÍ³ **************************************************\n");
     printf("************************************************************************************\n\n");
     my_startsys();
-    printf("æ–‡ä»¶ç³»ç»Ÿå·²å¼€å¯.\n\n");
-    printf("è¾“å…¥helpæ¥æ˜¾ç¤ºå¸®åŠ©é¡µé¢.\n\n");
+    printf("ÎÄ¼şÏµÍ³ÒÑ¿ªÆô.\n\n");
+    printf("ÊäÈëhelpÀ´ÏÔÊ¾°ïÖúÒ³Ãæ.\n\n");
 
     while (1)
     {
@@ -23,13 +23,13 @@ int main()
 
         for (int i = 0; i < strlen(temp) - 1; i++)
         {
-            command[i] = temp[i]; // fgetså­˜åœ¨ä¸€ä¸ªbugï¼Œä¼šæŠŠ\nä¹Ÿè¯»è¿›å»ï¼Œæ‰€ä»¥è¦å¾®è°ƒä¸€ä¸‹
+            command[i] = temp[i]; // fgets´æÔÚÒ»¸öbug£¬»á°Ñ\nÒ²¶Á½øÈ¥£¬ËùÒÔÒªÎ¢µ÷Ò»ÏÂ
             command[i + 1] = '\0';
         }
 
         if (strcmp(command, ""))
-        {                              // ä¸æ˜¯ç©ºå‘½ä»¤
-            sp = strtok(command, " "); // æŠŠç©ºæ ¼å‰çš„å‘½ä»¤åˆ†ç¦»å‡ºæ¥
+        {                              // ²»ÊÇ¿ÕÃüÁî
+            sp = strtok(command, " "); // °Ñ¿Õ¸ñÇ°µÄÃüÁî·ÖÀë³öÀ´
             // printf("%s\n",sp);
             for (i = 0; i < 15; i++)
             {
@@ -43,7 +43,7 @@ int main()
             {
             case 0: // mkdir
                 sp = strtok(NULL, " ");
-                // printf("%s\n",sp);
+                //  printf("%s\n",sp);
                 if (sp != NULL)
                     my_mkdir(sp);
                 else
@@ -91,13 +91,13 @@ int main()
                 if (openfilelist[curfd].filefcb.attribute == 1)
                     my_close(curfd);
                 else
-                    printf("å½“å‰æ²¡æœ‰çš„æ‰“å¼€çš„æ–‡ä»¶\n");
+                    printf("µ±Ç°Ã»ÓĞµÄ´ò¿ªµÄÎÄ¼ş\n");
                 break;
             case 8: // write
                 if (openfilelist[curfd].filefcb.attribute == 1)
                     my_write(curfd);
                 else
-                    printf("è¯·å…ˆæ‰“å¼€æ–‡ä»¶,ç„¶åå†ä½¿ç”¨wirteæ“ä½œ\n");
+                    printf("ÇëÏÈ´ò¿ªÎÄ¼ş,È»ºóÔÙÊ¹ÓÃwrite²Ù×÷\n");
                 break;
             case 9: // read
                 sp = strtok(NULL, " ");
@@ -112,19 +112,19 @@ int main()
                 else if (openfilelist[curfd].filefcb.attribute == 1)
                     my_read(curfd, length);
                 else
-                    printf("è¯·å…ˆæ‰“å¼€æ–‡ä»¶,ç„¶åå†ä½¿ç”¨readæ“ä½œ\n");
+                    printf("ÇëÏÈ´ò¿ªÎÄ¼ş,È»ºóÔÙÊ¹ÓÃread²Ù×÷\n");
                 break;
 
             case 10: // exit
                 my_exitsys();
-                printf("é€€å‡ºæ–‡ä»¶ç³»ç»Ÿ.\n");
+                printf("ÍË³öÎÄ¼şÏµÍ³.\n");
                 return 0;
                 break;
             case 11: // help
                 show_help();
                 break;
             default:
-                printf("æ²¡æœ‰ %s è¿™ä¸ªå‘½ä»¤\n", sp);
+                printf("Ã»ÓĞ %s Õâ¸öÃüÁî\n", sp);
                 break;
             }
         }
@@ -134,22 +134,24 @@ int main()
     return 0;
 }
 
-void error(char *command){
-    printf("%s : ç¼ºå°‘å‚æ•°\n", command);
-    printf("è¾“å…¥ 'help' æ¥æŸ¥çœ‹å‘½ä»¤æç¤º.\n");
+void error(char *command)
+{
+    printf("%s : È±ÉÙ²ÎÊı\n", command);
+    printf("ÊäÈë 'help' À´²é¿´ÃüÁîÌáÊ¾.\n");
 }
 
-void show_help(){
-    printf("å‘½ä»¤å\t\tå‘½ä»¤å‚æ•°\t\tå‘½ä»¤åŠŸèƒ½\n\n");
-    printf("cd\t\tç›®å½•å(è·¯å¾„å)\t\tåˆ‡æ¢å½“å‰ç›®å½•åˆ°æŒ‡å®šç›®å½•\n");
-    printf("mkdir\t\tç›®å½•å\t\t\tåœ¨å½“å‰ç›®å½•åˆ›å»ºæ–°ç›®å½•\n");
-    printf("rmdir\t\tç›®å½•å\t\t\tåœ¨å½“å‰ç›®å½•åˆ é™¤æŒ‡å®šç›®å½•\n");
-    printf("ls\t\tæ— \t\t\tæ˜¾ç¤ºå½“å‰ç›®å½•ä¸‹çš„ç›®å½•å’Œæ–‡ä»¶\n");
-    printf("create\t\tæ–‡ä»¶å\t\t\tåœ¨å½“å‰ç›®å½•ä¸‹åˆ›å»ºæŒ‡å®šæ–‡ä»¶\n");
-    printf("rm\t\tæ–‡ä»¶å\t\t\tåœ¨å½“å‰ç›®å½•ä¸‹åˆ é™¤æŒ‡å®šæ–‡ä»¶\n");
-    printf("open\t\tæ–‡ä»¶å\t\t\tåœ¨å½“å‰ç›®å½•ä¸‹æ‰“å¼€æŒ‡å®šæ–‡ä»¶\n");
-    printf("write\t\tæ— \t\t\tåœ¨æ‰“å¼€æ–‡ä»¶çŠ¶æ€ä¸‹,å†™è¯¥æ–‡ä»¶\n");
-    printf("read\t\tæ— \t\t\tåœ¨æ‰“å¼€æ–‡ä»¶çŠ¶æ€ä¸‹,è¯»å–è¯¥æ–‡ä»¶\n");
-    printf("close\t\tæ— \t\t\tåœ¨æ‰“å¼€æ–‡ä»¶çŠ¶æ€ä¸‹,å…³é—­è¯¥æ–‡ä»¶\n");
-    printf("exit\t\tæ— \t\t\té€€å‡ºç³»ç»Ÿ\n\n");
+void show_help()
+{
+    printf("ÃüÁîÃû\t\tÃüÁî²ÎÊı\t\tÃüÁî¹¦ÄÜ\n\n");
+    printf("cd\t\tÄ¿Â¼Ãû(Â·¾¶Ãû)\t\tÇĞ»»µ±Ç°Ä¿Â¼µ½Ö¸¶¨Ä¿Â¼\n");
+    printf("mkdir\t\tÄ¿Â¼Ãû\t\t\tÔÚµ±Ç°Ä¿Â¼´´½¨ĞÂÄ¿Â¼\n");
+    printf("rmdir\t\tÄ¿Â¼Ãû\t\t\tÔÚµ±Ç°Ä¿Â¼É¾³ıÖ¸¶¨Ä¿Â¼\n");
+    printf("ls\t\tÎŞ\t\t\tÏÔÊ¾µ±Ç°Ä¿Â¼ÏÂµÄÄ¿Â¼ºÍÎÄ¼ş\n");
+    printf("create\t\tÎÄ¼şÃû\t\t\tÔÚµ±Ç°Ä¿Â¼ÏÂ´´½¨Ö¸¶¨ÎÄ¼ş\n");
+    printf("rm\t\tÎÄ¼şÃû\t\t\tÔÚµ±Ç°Ä¿Â¼ÏÂÉ¾³ıÖ¸¶¨ÎÄ¼ş\n");
+    printf("open\t\tÎÄ¼şÃû\t\t\tÔÚµ±Ç°Ä¿Â¼ÏÂ´ò¿ªÖ¸¶¨ÎÄ¼ş\n");
+    printf("write\t\tÎŞ\t\t\tÔÚ´ò¿ªÎÄ¼ş×´Ì¬ÏÂ,Ğ´¸ÃÎÄ¼ş\n");
+    printf("read\t\tÎŞ\t\t\tÔÚ´ò¿ªÎÄ¼ş×´Ì¬ÏÂ,¶ÁÈ¡¸ÃÎÄ¼ş\n");
+    printf("close\t\tÎŞ\t\t\tÔÚ´ò¿ªÎÄ¼ş×´Ì¬ÏÂ,¹Ø±Õ¸ÃÎÄ¼ş\n");
+    printf("exit\t\tÎŞ\t\t\tÍË³öÏµÍ³\n\n");
 }

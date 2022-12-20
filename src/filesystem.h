@@ -14,40 +14,40 @@ typedef struct FCB
     unsigned char attribute;   //1:data, 0:dir
     unsigned short time;
     unsigned short date;
-    unsigned short first;     //æ–‡ä»¶èµ·å§‹ç›˜å—å·
+    unsigned short first;     //ÎÄ¼şÆğÊ¼ÅÌ¿éºÅ
     unsigned long length;   
-    char free;                //è¡¨ç¤ºç›®å½•é¡¹æ˜¯å¦ä¸ºç©º
+    char free;                //±íÊ¾Ä¿Â¼ÏîÊÇ·ñÎª¿Õ
 } fcb;
 
 typedef struct FAT
 {
-    unsigned short id;        //ä¸‹ä¸€ä¸ªå—çš„å—å·
+    unsigned short id;        //ÏÂÒ»¸ö¿éµÄ¿éºÅ
 } fat;
 
 typedef struct USEROPEN
 {
     fcb filefcb;
-    int dirno;              //æ‰“å¼€æ–‡ä»¶çš„ç›®å½•é¡¹åœ¨çˆ¶ç›®å½•æ–‡ä»¶ä¸­çš„ç›˜å—å·
-    int diroff;             //æ‰“å¼€æ–‡ä»¶çš„ç›®å½•é¡¹åœ¨çˆ¶ç›®å½•æ–‡ä»¶çš„dirnoç›˜å—ä¸­çš„ç›®å½•é¡¹åºå·
+    int dirno;              //´ò¿ªÎÄ¼şµÄÄ¿Â¼ÏîÔÚ¸¸Ä¿Â¼ÎÄ¼şÖĞµÄÅÌ¿éºÅ
+    int diroff;             //´ò¿ªÎÄ¼şµÄÄ¿Â¼ÏîÔÚ¸¸Ä¿Â¼ÎÄ¼şµÄdirnoÅÌ¿éÖĞµÄÄ¿Â¼ÏîĞòºÅ
     char dir[80];
-    int file_ptr;           //è¯»å†™ä½ç½®
+    int file_ptr;           //¶ÁĞ´Î»ÖÃ
     char fcbstate;      
-    char topenfile;         //æ‰“å¼€è¡¨é¡¹æ˜¯å¦ä¸ºç©º
+    char topenfile;         //´ò¿ª±íÏîÊÇ·ñÎª¿Õ
 } useropen;
 
 typedef struct BLOCK0
 {
     char information[200];
-    unsigned short root; //æ ¹ç›®å½•æ–‡ä»¶çš„èµ·å§‹ç›˜å—å·
+    unsigned short root; //¸ùÄ¿Â¼ÎÄ¼şµÄÆğÊ¼ÅÌ¿éºÅ
     unsigned char *startblock;
 } block0;
 
-unsigned char *v_start_pos; //è™šæ‹Ÿç£ç›˜çš„èµ·å§‹ä½ç½®
+unsigned char *v_start_pos; //ĞéÄâ´ÅÅÌµÄÆğÊ¼Î»ÖÃ
 useropen openfilelist[MAXOPENFILE];
 int curfd;
 char curdir[80];
-unsigned char *startp;       //è™šæ‹Ÿç£ç›˜æ•°æ®åŒºèµ·å§‹ä½ç½®
-unsigned char buffer[SIZE];       //ç¼“å†²åŒº
+unsigned char *startp;       //ĞéÄâ´ÅÅÌÊı¾İÇøÆğÊ¼Î»ÖÃ
+unsigned char buffer[SIZE];       //»º³åÇø
 
 int main();
 void error(char * command);
@@ -68,7 +68,7 @@ int my_read(int fd, int len);
 int do_read(int fd, int len, char *text);
 void my_exitsys();
 
-unsigned short int GetFreeBlock();
+unsigned short GetFreeBlock();
 int FindFatherDir(int fd);
 int DistributeBlock(int *blockNum, fat *fatPtr);
 int GetFreeOpenfile();
