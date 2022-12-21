@@ -234,9 +234,9 @@ void my_rm(char *filename)
     char buf[MAX_SIZE];
     openfilelist[curfd].file_ptr = 0;
     do_read(curfd, openfilelist[curfd].filefcb.length, buf);
-    int i;
+    int i = 0;
     fcb *fcbPtr = (fcb *)buf;
-    for (; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++)
+    for (; i < (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)); i++, fcbPtr++)
     {
         if (strcmp(fcbPtr->filename, fname) == 0 && strcmp(fcbPtr->exname, exname) == 0)
         {
