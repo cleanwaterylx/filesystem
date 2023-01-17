@@ -309,9 +309,9 @@ void my_cd(char *dirname)
                 break;
             }
         }
-        if (strcmp(fcbPtr->exname, "di") != 0)
+        if (i == (int)(openfilelist[curfd].filefcb.length / sizeof(fcb)))
         {
-            printf("不允许cd非目录文件\n");
+            printf("没有此目录\n");
             return;
         }
         else
@@ -673,7 +673,6 @@ int do_read(int fd, int len, char *text)
     free(buf);
     return lenTmp - len;
 }
-
 // done
 int my_read(int fd, int len)
 {
