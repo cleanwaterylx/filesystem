@@ -655,9 +655,9 @@ int do_read(int fd, int len, char *text)
         {
             memcpy(text, buf + offset, BLOCKSIZE - offset);
             textPtr += BLOCKSIZE - offset;
-            offset = 0;
             len -= BLOCKSIZE - offset;
-
+            offset = 0;
+            
             blockNum = fatPtr->id;
             if (blockNum == END)
             {
